@@ -50,7 +50,10 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Masa berlaku token dalam menit. Null = token tidak pernah kedaluwarsa.
+    'expiration' => env('SANCTUM_EXPIRATION_MINUTES') === null
+        ? 10080
+        : (env('SANCTUM_EXPIRATION_MINUTES') === '' ? null : (int) env('SANCTUM_EXPIRATION_MINUTES')),
 
     /*
     |--------------------------------------------------------------------------
