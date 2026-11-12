@@ -96,7 +96,118 @@ Nilai enum disimpan dalam bahasa Inggris. Label bahasa Indonesia diatur di front
 - `occupancies` punya kolom tambahan `note` untuk catatan selisih harga saat pindah kamar (F-TEN-04).
 - Path foto di data demo hanya contoh. File aslinya diunggah lewat aplikasi ke disk privat.
 
+## Menjalankan queue dan scheduler
+
+Infrastruktur queue dan scheduler sudah disiapkan pada Tugas 2. Isi tugas
+berkalanya (penerbitan tagihan, pengingat, notifikasi) ditambahkan pada tugas
+masing-masing, jadi pada tahap ini belum ada jadwal yang berjalan.
+
+### 1. Worker queue
+
+```bash
+php artisan queue:work --queue=notifications,default
+```
+
+Pekerjaan latar (misalnya pengiriman notifikasi) diarahkan ke queue
+`notifications` agar tidak menahan request HTTP. **Worker wajib menyebutkan
+queue tersebut**; `queue:work` tanpa `--queue` hanya mendengarkan `default`,
+sehingga job bisa menumpuk tanpa diproses. Di produksi jalankan worker di bawah
+supervisor (Supervisor atau systemd).
+
+### 2. Scheduler
+
+Tambahkan satu baris cron berikut. Ini satu-satunya entri yang dibutuhkan;
+jadwal lain didaftarkan di dalam aplikasi.
+
+```cron
+* * * * * cd /path/ke/be-laravel && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Zona waktu dan jam acuan sudah disiapkan di `config/kostkuy.php`
+(`scheduler.timezone`, `scheduler.daily_at`) dan dapat diubah lewat
+`SCHEDULER_TIMEZONE` serta `SCHEDULER_DAILY_AT` di `.env`.
+
+Mendaftarkan jadwal baru cukup menambahkan di `routes/console.php`:
+
+```php
+Schedule::command('nama:command')
+    ->dailyAt(config('kostkuy.scheduler.daily_at'))
+    ->timezone(config('kostkuy.scheduler.timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();
+```
+
+`php artisan schedule:list` menampilkan seluruh jadwal yang terdaftar
+(saat ini kosong).
+
+## REST API
+
+Kontrak API ada di [docs/API.md](docs/API.md): bentuk respons, daftar kode
+error, dan cara membuat token untuk pengujian.
+
+Pemetaan cakupan pekerjaan dan daftar fitur yang sengaja belum dibuat ada di
+[docs/SCOPE.md](docs/SCOPE.md).
+
+Semua endpoint berada di bawah `/api/v1`:
+
+| Method | Endpoint | Akses | Fungsi |
+| --- | --- | --- | --- |
+| GET | `/ping` | Publik | Health check |
+
+> Route per role (owner/tenant), endpoint autentikasi, dan route fitur
+> ditambahkan pada tugas berikutnya sesuai pembagian tugas kelompok.
+
+### Struktur direktori API
+
+```
+app/
+├── Exceptions/ApiException.php
+├── Http/
+│   ├── Controllers/Api/V1/    # PingController
+│   ├── Middleware/            # ForceJsonResponse
+│   └── Responses/ApiResponse.php
+routes/
+├── api.php                    # pendaftar versi
+└── api/v1/health.php
+```
+
+### Menambah endpoint baru
+
+1. Buat controller di `app/Http/Controllers/Api/V1/`.
+2. Daftarkan route di `routes/api/v1/` lalu muat dari `routes/api.php`.
+3. Balas memakai helper `ApiResponse` agar bentuknya seragam.
+4. Untuk kesalahan yang sudah diketahui, lempar `ApiException`
+   (`notFound()`, `forbidden()`, `conflict()`, `unprocessable()`).
+5. Ambil identitas pengguna dari `$request->user()`; jangan menerima `user_id`
+   dari parameter request (NFR-02).
+
+### Cara membuat token untuk pengujian
+
+Endpoint login baru ada pada Tugas 3. Sementara itu:
+
+```bash
+php artisan tinker
+>>> $u = App\Models\User::where('phone', '081311110001')->first();
+>>> echo $u->createToken('manual')->plainTextToken;
+```
+
+Atau di dalam pengujian gunakan `Sanctum::actingAs($user, ['tenant'])`.
+
+## Pengujian
+
+```bash
+php artisan test
+```
+
+Cakupan saat ini (23 tes, 59 asersi):
+
+- `tests/Feature/Api/V1/ApiStructureTest` — prefix versi, bentuk respons, error JSON (404, 405, 422, ApiException).
+- `tests/Feature/Api/V1/SanctumSetupTest` — token Sanctum, route terlindungi, token dicabut, masa berlaku.
+- `tests/Feature/Console/SchedulerTest` — command heartbeat, log, jadwal terdaftar, zona waktu.
+- `tests/Feature/Queue/QueueSetupTest` — job masuk tabel `jobs`, diproses worker, tabel pendukung tersedia.
+
 ## Alur kerja Git
+
 
 - `main` hanya berisi kode yang sudah direview.
 - Kerjakan fitur di branch sendiri, lalu buat Pull Request ke `main`.
