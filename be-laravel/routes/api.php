@@ -18,4 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('v1.')->group(function (): void {
     require __DIR__.'/api/v1/health.php';
+    require __DIR__.'/api/v1/room-types.php';
+    require __DIR__.'/api/v1/rooms.php';
+    require __DIR__.'/api/v1/facilities.php';
 });
