@@ -21,4 +21,6 @@ Route::prefix('v1')->name('v1.')->group(function (): void {
     require __DIR__.'/api/v1/room-types.php';
     require __DIR__.'/api/v1/rooms.php';
     require __DIR__.'/api/v1/facilities.php';
+    require __DIR__.'/api/v1/auth.php';
+    require __DIR__.'/api/v1/owner.php';
 });
