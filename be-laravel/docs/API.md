@@ -101,6 +101,57 @@ Di dalam pengujian: `Sanctum::actingAs($user, ['tenant'])`.
 
 ---
 
+## Pembatasan akses data per penyewa (NFR-02)
+
+Penyewa hanya boleh mengakses datanya sendiri. Aturan ini **tidak** dicek
+manual di controller, tetapi lewat Policy Laravel sehingga konsisten di semua
+endpoint.
+
+### Model yang dilindungi
+
+| Model | Policy | Dasar kepemilikan |
+| --- | --- | --- |
+| `Occupancy` | `OccupancyPolicy` | `occupancy.user_id` |
+| `Invoice` | `InvoicePolicy` | `invoice.occupancy.user_id` (lewat hunian, bukan langsung ke pengguna) |
+| `Complaint` | `ComplaintPolicy` | `complaint.user_id` |
+
+Pemilik kost melewati seluruh pemeriksaan ini lewat `Gate::before` di
+`AppServiceProvider`, karena mengelola semua data (PRD bagian 3).
+
+### Cara memakai di endpoint
+
+Untuk satu resource:
+
+```php
+// 403 FORBIDDEN otomatis bila bukan milik penyewa yang login.
+Gate::authorize('view', $invoice);
+```
+
+Untuk daftar, saring dulu lewat relasi milik pengguna. Jangan pernah memakai
+`::all()` atau menerima `user_id` dari request:
+
+```php
+$tagihan = $request->user()
+    ->activeOccupancy
+    ->invoices()
+    ->latest('period_start')
+    ->get();
+```
+
+### Aturan penulisan route
+
+1. Ambil identitas dari `$request->user()`, bukan dari parameter.
+2. Route yang menerima ID resource wajib memanggil `Gate::authorize()`
+   sebelum data dikembalikan.
+3. Route khusus penyewa memakai rantai `auth:sanctum`, `active`,
+   `password.changed`, `role:tenant`.
+
+Pengujian aturan ini ada di `tests/Feature/Security/TenantDataIsolationTest.php`
+dan mencakup: penyewa membuka miliknya sendiri (boleh), membuka milik penyewa
+lain (ditolak), dan pemilik membuka data siapa pun (boleh).
+
+---
+
 ## Menambah endpoint baru
 
 1. Controller di `app/Http/Controllers/Api/V1/`.
