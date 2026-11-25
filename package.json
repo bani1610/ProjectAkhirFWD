@@ -1,0 +1,11 @@
+{
+  "name": "kostkuy",
+  "private": true,
+  "packageManager": "pnpm@11.2.2",
+  "scripts": {
+    "dev": "pnpm dlx concurrently -k -n api,web -c blue,magenta \"cd be-laravel && php artisan serve\" \"pnpm -C fe-react dev\"",
+    "dev:api": "cd be-laravel && php artisan serve",
+    "dev:web": "pnpm -C fe-react dev",
+    "build": "pnpm -C fe-react build"
+  }
+}
