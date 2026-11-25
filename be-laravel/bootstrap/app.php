@@ -3,6 +3,9 @@
 use App\Exceptions\ApiException;
 use App\Http\Middleware\ForceJsonResponse;
 use App\Http\Responses\ApiResponse;
+use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\EnsureUserHasRole;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
@@ -14,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -28,8 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ForceJsonResponse::class,
         ]);
 
-        // Alias middleware fitur (role, active, password.changed) didaftarkan
-        // pada Tugas 3 bersama modul autentikasi.
+        // Alias middleware.
+        $middleware->alias([
+            'active' => EnsureAccountIsActive::class,
+            'password.changed' => EnsurePasswordChanged::class,
+            'role' => EnsureUserHasRole::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Khusus API: semua error dibungkus dengan bentuk respons yang sama.
