@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #eef6f0;
+  --color-brand-100: #d6eadb;
+  --color-brand-600: #24693f;
+  --color-brand-700: #1f5a36;
+  --color-brand-800: #184a2c;
+  --color-brand-900: #123a22;
+  --color-cream: #faf8f3;
+  --color-accent: #f5a524;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem; /* tinggi navbar sticky */
+}
+
+body {
+  @apply bg-cream text-gray-800 antialiased;
+}
