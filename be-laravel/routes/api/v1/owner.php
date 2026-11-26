@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Owner\RoomManagementController;
 use App\Http\Controllers\Api\V1\Owner\FacilityManagementController;
 use App\Http\Controllers\Api\V1\Owner\RoomFacilityManagementController;
 use App\Http\Controllers\Api\V1\Owner\HouseRuleManagementController;
+use App\Http\Controllers\Api\V1\Owner\OccupancyManagementController;
 
 // Seluruh endpoint khusus Owner.
 Route::middleware([
@@ -27,6 +28,32 @@ Route::middleware([
         TenantAccountController::class,
         'deactivate',
     ])->name('tenants.deactivate');
+
+    // Penempatan tenant ke kamar.
+    Route::post('/occupancies', [
+        OccupancyManagementController::class,
+        'store',
+    ])->name('occupancies.store');
+
+    Route::get('/occupancies', [
+        OccupancyManagementController::class,
+        'index',
+    ])->name('occupancies.index');
+
+    Route::post('/occupancies/{occupancy}/move', [
+        OccupancyManagementController::class,
+        'move',
+    ])->name('occupancies.move');
+
+    Route::post('/occupancies/{occupancy}/checkout', [
+        OccupancyManagementController::class,
+        'checkout',
+    ])->name('occupancies.checkout');
+
+    Route::patch('/occupancies/{occupancy}/deposit', [
+        OccupancyManagementController::class,
+        'updateDeposit',
+    ])->name('occupancies.deposit.update');
 
         // CRUD tipe kamar beserta harga.
     Route::get('/room-types', [
