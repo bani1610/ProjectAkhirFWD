@@ -9,7 +9,7 @@ const TONES = {
   neutral: 'bg-gray-100 text-gray-600 ring-gray-500/20',
 }
 
-export const STATUS_TONES = {
+const STATUS_TONES = {
   // kamar & inventaris
   Kosong: 'success',
   Terisi: 'info',
