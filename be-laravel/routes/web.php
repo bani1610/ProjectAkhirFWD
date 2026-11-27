@@ -2,6 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// Backend hanya API; tampilan ada di fe-react.
+Route::get('/', fn () => ['app' => 'KostKuy API', 'api' => url('/api/v1')]);

@@ -142,8 +142,10 @@ Schedule::command('nama:command')
 
 ## REST API
 
-Kontrak API ada di [docs/API.md](docs/API.md): bentuk respons, daftar kode
-error, dan cara membuat token untuk pengujian.
+Daftar endpoint lengkap ada di
+[API Specification](../docs/API_Specification_KostKuy_v1.0.md). Panduan
+developer (bentuk respons, kode error, Policy, cara menambah endpoint) ada di
+[docs/API.md](docs/API.md).
 
 Pemetaan cakupan pekerjaan dan daftar fitur yang sengaja belum dibuat ada di
 [docs/SCOPE.md](docs/SCOPE.md).
