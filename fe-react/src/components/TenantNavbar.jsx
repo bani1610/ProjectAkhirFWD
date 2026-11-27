@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {api} from '../lib/api';
 
@@ -10,7 +10,7 @@ export default function TenantNavbar({ user, occupancy, notifications = [], onMa
   const handleLogout = async () => {
     try {
       await api.post('/logout');
-    } catch (_) {
+    } catch {
       // ignore
     } finally {
       localStorage.removeItem('token');

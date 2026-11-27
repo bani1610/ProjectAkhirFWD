@@ -87,7 +87,7 @@ export default function TenantComplaintsPage() {
       }
       setShowForm(false);
       setForm({ category: 'damage', facility_id: '', urgency: 'normal', title: '', description: '', photos: [] });
-    } catch (_) {
+    } catch {
       alert('Pastikan minimal 1 foto (maks. 3 foto, 5 MB/foto) telah dilampirkan.');
     } finally {
       setSubmitting(false);
@@ -98,7 +98,7 @@ export default function TenantComplaintsPage() {
     const nextStatus = isResolved ? 'confirmed' : 'in_progress';
     try {
       await api.patch(`/tenant/complaints/${complaintId}/confirm`, { resolved: isResolved });
-    } catch (_) {
+    } catch {
       // optimistic fallback
     }
     setComplaints((prev) =>
@@ -111,7 +111,7 @@ export default function TenantComplaintsPage() {
     if (!body) return;
     try {
       await api.post(`/tenant/complaints/${complaintId}/comments`, { body });
-    } catch (_) {
+    } catch {
       // optimistic fallback
     }
     setComplaints((prev) =>

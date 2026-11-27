@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import {api} from '../lib/api';
 import TenantNavbar from './TenantNavbar';
@@ -42,7 +42,7 @@ export default function TenantLayout({ children }) {
   const handleMarkAllRead = async () => {
     try {
       await api.post('/tenant/notifications/read-all');
-    } catch (_) {
+    } catch {
       // optimistic fallback
     }
     setShellData((prev) => ({

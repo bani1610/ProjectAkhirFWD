@@ -37,7 +37,7 @@ export default function TenantProfilePage() {
         emergency_phone: profile.emergency_phone,
       });
       setMsg('Data profil & kontak darurat berhasil diperbarui.');
-    } catch (_) {
+    } catch {
       setMsg('Perubahan profil tersimpan.');
     }
   };
@@ -53,7 +53,7 @@ export default function TenantProfilePage() {
       await api.put('/tenant/password', passwords);
       setMsg('Password berhasil diubah.');
       setPasswords({ current_password: '', password: '', password_confirmation: '' });
-    } catch (_) {
+    } catch {
       setMsg('Gagal mengubah password. Periksa password lama Anda.');
     }
   };
