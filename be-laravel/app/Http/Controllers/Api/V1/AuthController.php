@@ -32,14 +32,6 @@ class AuthController extends Controller
             );
         }
 
-        // Periksa status akun.
-        if (!$user->is_active) {
-            return ApiResponse::error(
-                'Akun Anda sudah dinonaktifkan.',
-                403,
-                'ACCOUNT_INACTIVE'
-            );
-        }
 
         // Periksa apakah akun sedang terkunci.
         if ($user->locked_until && $user->locked_until->isFuture()) {
@@ -86,9 +78,15 @@ class AuthController extends Controller
                 'Nomor telepon atau password salah.',
                 401,
                 'INVALID_CREDENTIALS',
-                meta: [
-                    'remaining_attempts' => 5 - $user->failed_login_attempts,
-                ]
+            );
+        }
+
+        // Periksa status akun.
+        if (!$user->is_active) {
+            return ApiResponse::error(
+                'Akun Anda sudah dinonaktifkan.',
+                403,
+                'ACCOUNT_INACTIVE'
             );
         }
 
@@ -153,7 +151,7 @@ class AuthController extends Controller
         }
 
         // Simpan password baru.
-        $user->password = $validated['new_password'];
+        $user->password = Hash::make($validated['new_password']);
         $user->must_change_password = false;
         $user->save();
 
