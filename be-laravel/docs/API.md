@@ -6,9 +6,10 @@ Kerangka REST API. Semua endpoint berada di bawah `/api/v1`.
 - Zona waktu: `Asia/Jakarta`
 - Format uang: bilangan bulat Rupiah (contoh `500000`)
 
-> **Cakupan.** Dokumen ini hanya memuat kerangka API: bentuk respons,
-> penanganan error, dan endpoint health check. Endpoint autentikasi dan route
-> fitur ditambahkan pada tugas berikutnya sesuai pembagian tugas kelompok.
+> **Cakupan.** Dokumen ini panduan developer: bentuk respons, kode error,
+> pembatasan akses, dan cara menambah endpoint. Daftar lengkap endpoint
+> beserta request/response-nya ada di
+> [API Specification](../../docs/API_Specification_KostKuy_v1.0.md).
 
 ## Bentuk respons
 
@@ -81,16 +82,9 @@ Publik. Dipakai untuk health check hosting dan monitoring.
 
 ---
 
-## Autentikasi (Tugas 3)
+## Autentikasi
 
-Saat ini **belum ada endpoint login**. Untuk pengujian, buat token langsung:
-
-```bash
-php artisan tinker
->>> $u = App\Models\User::where('phone', '081311110001')->first();
->>> echo $u->createToken('manual')->plainTextToken;
-```
-
+Login lewat `POST /auth/login` (`phone`, `password`); respons berisi `token`.
 Gunakan token tersebut sebagai header:
 
 ```
