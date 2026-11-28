@@ -67,7 +67,6 @@ class RoomManagementController extends Controller
                 'required',
                 Rule::in([
                     Room::STATUS_VACANT,
-                    Room::STATUS_OCCUPIED,
                     Room::STATUS_MAINTENANCE,
                 ]),
             ],
@@ -108,11 +107,22 @@ class RoomManagementController extends Controller
                 'required',
                 Rule::in([
                     Room::STATUS_VACANT,
-                    Room::STATUS_OCCUPIED,
                     Room::STATUS_MAINTENANCE,
                 ]),
             ],
         ]);
+
+        if (
+            isset($validated['status']) &&
+            $validated['status'] !== $room->status &&
+            $room->activeOccupancy()->exists()
+        ) {
+            return ApiResponse::error(
+                'Status kamar tidak dapat diubah karena masih memiliki penghuni aktif.',
+                409,
+                'ROOM_HAS_ACTIVE_OCCUPANCY'
+            );
+        }
 
         $room->update($validated);
         $room->load('roomType:id,name,description');
