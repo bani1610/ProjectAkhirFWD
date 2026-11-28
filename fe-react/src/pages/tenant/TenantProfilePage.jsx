@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import {api} from '../../lib/api';
+import { api } from '../../lib/api';
+import { changePassword } from '../../services/auth';
 
 export default function TenantProfilePage() {
   const [profile, setProfile] = useState({
@@ -23,7 +24,7 @@ export default function TenantProfilePage() {
       .then((res) => {
         if (res.data) setProfile((prev) => ({ ...prev, ...res.data }));
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleSaveProfile = async (e) => {
@@ -37,8 +38,8 @@ export default function TenantProfilePage() {
         emergency_phone: profile.emergency_phone,
       });
       setMsg('Data profil & kontak darurat berhasil diperbarui.');
-    } catch (_) {
-      setMsg('Perubahan profil tersimpan.');
+    } catch (err) {
+      setMsg(err?.response?.data?.message || 'Gagal menyimpan perubahan profil.');
     }
   };
 
@@ -50,10 +51,14 @@ export default function TenantProfilePage() {
       return;
     }
     try {
-      await api.put('/tenant/password', passwords);
+      await changePassword({
+        currentPassword: passwords.current_password,
+        newPassword: passwords.password,
+        newPasswordConfirmation: passwords.password_confirmation,
+      });
       setMsg('Password berhasil diubah.');
       setPasswords({ current_password: '', password: '', password_confirmation: '' });
-    } catch (_) {
+    } catch {
       setMsg('Gagal mengubah password. Periksa password lama Anda.');
     }
   };
