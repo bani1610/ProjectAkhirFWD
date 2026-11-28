@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
-import { changePassword } from '../../services/auth';
+import { getCurrentUser, changePassword } from '../../services/auth';
 
 export default function TenantProfilePage() {
+  const currentUser = getCurrentUser();
+
   const [profile, setProfile] = useState({
-    name: 'Budi Santoso',
-    phone: '081311110001',
-    occupation: 'Karyawan swasta',
-    emergency_name: 'Sri Santoso',
-    emergency_relation: 'Ibu',
-    emergency_phone: '081311119001',
+    name: currentUser?.name || '',
+    phone: currentUser?.phone || '',
+    occupation: '',
+    emergency_name: '',
+    emergency_relation: '',
+    emergency_phone: '',
   });
   const [passwords, setPasswords] = useState({
     current_password: '',
@@ -17,6 +19,9 @@ export default function TenantProfilePage() {
     password_confirmation: '',
   });
   const [msg, setMsg] = useState('');
+  const [msgType, setMsgType] = useState(''); // 'success' | 'error'
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [loadingPassword, setLoadingPassword] = useState(false);
 
   useEffect(() => {
     api
@@ -24,12 +29,18 @@ export default function TenantProfilePage() {
       .then((res) => {
         if (res.data) setProfile((prev) => ({ ...prev, ...res.data }));
       })
-      .catch(() => { });
+      .catch((err) => {
+        // Tampilkan error jika gagal load profil
+        setMsg(err?.response?.data?.message || 'Gagal memuat profil.');
+        setMsgType('error');
+      });
   }, []);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setMsg('');
+    setMsgType('');
+    setLoadingProfile(true);
     try {
       await api.put('/tenant/profile', {
         occupation: profile.occupation,
@@ -38,18 +49,30 @@ export default function TenantProfilePage() {
         emergency_phone: profile.emergency_phone,
       });
       setMsg('Data profil & kontak darurat berhasil diperbarui.');
+      setMsgType('success');
     } catch (err) {
-      setMsg(err?.response?.data?.message || 'Gagal menyimpan perubahan profil.');
+      setMsg(
+        err?.response?.data?.message ||
+          'Gagal menyimpan perubahan profil. Silakan coba lagi.'
+      );
+      setMsgType('error');
+    } finally {
+      setLoadingProfile(false);
     }
   };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setMsg('');
+    setMsgType('');
+
     if (passwords.password !== passwords.password_confirmation) {
       setMsg('Konfirmasi password baru tidak cocok.');
+      setMsgType('error');
       return;
     }
+
+    setLoadingPassword(true);
     try {
       await changePassword({
         currentPassword: passwords.current_password,
@@ -57,9 +80,16 @@ export default function TenantProfilePage() {
         newPasswordConfirmation: passwords.password_confirmation,
       });
       setMsg('Password berhasil diubah.');
+      setMsgType('success');
       setPasswords({ current_password: '', password: '', password_confirmation: '' });
-    } catch {
-      setMsg('Gagal mengubah password. Periksa password lama Anda.');
+    } catch (err) {
+      setMsg(
+        err?.response?.data?.message ||
+          'Gagal mengubah password. Periksa password lama Anda.'
+      );
+      setMsgType('error');
+    } finally {
+      setLoadingPassword(false);
     }
   };
 
@@ -78,8 +108,15 @@ export default function TenantProfilePage() {
         </p>
       </section>
 
+      {/* Feedback message dengan warna sesuai tipe */}
       {msg && (
-        <div className="mb-5 rounded-2xl bg-[#E5F1EA] border border-[#1B6B3A]/25 px-4 py-3 text-xs font-bold text-[#14532D]">
+        <div
+          className={`mb-5 rounded-2xl border px-4 py-3 text-xs font-bold ${
+            msgType === 'success'
+              ? 'bg-[#E5F1EA] border-[#1B6B3A]/25 text-[#14532D]'
+              : 'bg-[#FEE2E2] border-[#FCA5A5] text-[#B91C1C]'
+          }`}
+        >
           {msg}
         </div>
       )}
@@ -93,7 +130,6 @@ export default function TenantProfilePage() {
           <h2 className="font-['Fraunces',Georgia,serif] text-xl font-bold text-[#112A1C]">
             Data Penghuni & Kontak Darurat
           </h2>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-xs font-bold text-[#7A867E] mb-1">
@@ -106,7 +142,6 @@ export default function TenantProfilePage() {
                 className="w-full rounded-xl border border-[#E5E1D8] bg-[#F1EDE3] px-3.5 py-2.5 text-sm text-[#4B5850] cursor-not-allowed"
               />
             </div>
-
             <div>
               <label className="block text-xs font-bold text-[#7A867E] mb-1">
                 Nomor HP Login (Terkunci)
@@ -119,7 +154,6 @@ export default function TenantProfilePage() {
               />
             </div>
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1">Pekerjaan</label>
             <input
@@ -130,7 +164,6 @@ export default function TenantProfilePage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <div className="pt-2 border-t border-[#E5E1D8]">
             <div className="text-xs font-extrabold uppercase tracking-wider text-[#1B6B3A] mb-3">
               Kontak Darurat
@@ -168,12 +201,12 @@ export default function TenantProfilePage() {
               </div>
             </div>
           </div>
-
           <button
             type="submit"
-            className="rounded-full bg-[#14532D] hover:bg-[#0B331C] text-white font-bold text-xs px-6 py-3 transition cursor-pointer"
+            disabled={loadingProfile}
+            className="rounded-full bg-[#14532D] hover:bg-[#0B331C] text-white font-bold text-xs px-6 py-3 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Simpan Perubahan Profil
+            {loadingProfile ? 'Menyimpan...' : 'Simpan Perubahan Profil'}
           </button>
         </form>
 
@@ -188,7 +221,6 @@ export default function TenantProfilePage() {
           <p className="text-xs text-[#4B5850]">
             Wajib mengganti kata sandi sementara saat login pertama kali demi keamanan akun Anda.
           </p>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1">Password Saat Ini</label>
             <input
@@ -199,7 +231,6 @@ export default function TenantProfilePage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1">Password Baru</label>
             <input
@@ -211,7 +242,6 @@ export default function TenantProfilePage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1">
               Konfirmasi Password Baru
@@ -227,12 +257,12 @@ export default function TenantProfilePage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <button
             type="submit"
-            className="rounded-full bg-[#14532D] hover:bg-[#0B331C] text-white font-bold text-xs px-6 py-3 transition cursor-pointer"
+            disabled={loadingPassword}
+            className="rounded-full bg-[#14532D] hover:bg-[#0B331C] text-white font-bold text-xs px-6 py-3 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Perbarui Kata Sandi
+            {loadingPassword ? 'Mengubah...' : 'Perbarui Kata Sandi'}
           </button>
         </form>
       </div>

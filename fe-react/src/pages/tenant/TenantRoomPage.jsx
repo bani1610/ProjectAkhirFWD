@@ -1,52 +1,33 @@
 import { useState, useEffect } from 'react';
-import {api} from '../../lib/api';
+import { api } from '../../lib/api';
+import { isAuthenticated } from '../../services/auth';
+import { useNavigate } from 'react-router-dom';
+import { LoadingState, ErrorState } from '../../components/states';
 
 export default function TenantRoomPage() {
+  const navigate = useNavigate();
   const [roomData, setRoomData] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     api
       .get('/tenant/room')
       .then((res) => setRoomData(res.data))
-      .catch(() => {
-        setRoomData({
-          user: { id: 2, name: 'Budi Santoso' },
-          occupancy: {
-            start_date: '2026-05-10',
-            active_until: '2027-05-09',
-            next_period_months: 6,
-            deposit_amount: 500000,
-            deposit_status: 'received',
-            room: {
-              number: '101',
-              floor: 1,
-              status: 'occupied',
-              room_type: {
-                name: 'Non-AC',
-                description: 'Kamar 3x3 m dengan kipas angin, kamar mandi dalam.',
-              },
-            },
-          },
-          room_facilities: [
-            { id: 1, name: 'Kasur', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-            { id: 2, name: 'Lemari', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-            { id: 3, name: 'Meja belajar', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-            { id: 4, name: 'Kursi', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-            { id: 6, name: 'Kipas angin', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-            { id: 7, name: 'Kamar mandi dalam', condition_status: 'good', note: 'Kondisi awal saat pendataan.', recorded_at: '2026-01-01', photo_path: null },
-          ],
-          shared_facilities: [
-            { id: 8, name: 'Dapur' },
-            { id: 9, name: 'WiFi' },
-            { id: 10, name: 'Parkir motor' },
-            { id: 11, name: 'Mesin cuci' },
-            { id: 12, name: 'Ruang jemur' },
-          ],
-          kost_rules:
-            '1. Jam malam pukul 23.00 WIB. Tamu wajib lapor ke pemilik.\n2. Tamu lawan jenis dilarang masuk kamar.\n3. Dilarang merokok di dalam kamar.\n4. Jaga kebersihan dapur dan kamar mandi bersama setelah dipakai.\n5. Matikan AC, lampu, dan peralatan listrik saat meninggalkan kamar.\n6. Pembayaran sewa paling lambat pada tanggal jatuh tempo.\n7. Kerusakan fasilitas segera dilaporkan lewat menu Keluhan.',
-        });
-      });
-  }, []);
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        setError(err?.response?.data?.message || 'Gagal memuat detail kamar.');
+      })
+      .finally(() => setLoading(false));
+  }, [navigate]);
 
   const conditionBadge = (status) => {
     if (status === 'good') return { label: 'Baik', cls: 'bg-[#E5F1EA] text-[#14532D]' };
@@ -54,16 +35,15 @@ export default function TenantRoomPage() {
     return { label: 'Rusak', cls: 'bg-[#FEE2E2] text-[#B91C1C]' };
   };
 
-  if (!roomData) {
-    return (
-      <div className="py-20 text-center text-sm font-semibold text-[#4B5850]">
-        Memuat detail kamar...
-      </div>
-    );
+  if (loading) {
+    return <LoadingState message="Memuat detail kamar..." />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   }
 
   const room = roomData.occupancy?.room;
-
   return (
     <>
       {/* Header Info Kamar */}
@@ -79,7 +59,6 @@ export default function TenantRoomPage() {
             </h1>
             <p className="text-sm text-[#4B5850] mt-1">{room?.room_type?.description}</p>
           </div>
-
           <div className="rounded-2xl bg-[#E5F1EA] border border-[#1B6B3A]/20 px-5 py-3.5 text-right">
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#14532D]">
               Sewa Aktif Sampai
@@ -105,7 +84,6 @@ export default function TenantRoomPage() {
               Catatan kondisi awal fasilitas saat check-in sebagai acuan bersama.
             </p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             {(roomData.room_facilities || []).map((item) => {
               const badge = conditionBadge(item.condition_status);
@@ -140,7 +118,6 @@ export default function TenantRoomPage() {
               );
             })}
           </div>
-
           {/* Fasilitas Bersama */}
           <div className="mt-6 pt-5 border-t border-[#E5E1D8]">
             <h3 className="text-sm font-bold text-[#112A1C] mb-3">Fasilitas Bersama Kost</h3>
@@ -156,7 +133,6 @@ export default function TenantRoomPage() {
             </div>
           </div>
         </div>
-
         {/* Peraturan Kost */}
         <div className="rounded-[22px] bg-white border border-[#E5E1D8] p-6 shadow-sm">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#1B6B3A]">

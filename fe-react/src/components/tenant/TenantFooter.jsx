@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 
 export default function TenantFooter() {
@@ -9,9 +8,10 @@ export default function TenantFooter() {
         <span>Butuh bantuan mendesak? Hubungi Pemilik Kost atau buat tiket Darurat di menu Keluhan.</span>
       </footer>
 
+      {/* Bottom Nav: hanya tampil di mobile (md:hidden) */}
       <nav
         aria-label="Navigasi Bawah Penghuni"
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md rounded-full bg-[#112A1C]/95 backdrop-blur-md border border-white/15 px-2 py-1.5 shadow-2xl flex items-center justify-around"
+        className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-md rounded-full bg-[#112A1C]/95 backdrop-blur-md border border-white/15 px-2 py-1.5 shadow-2xl flex items-center justify-around"
       >
         {[
           { to: '/penghuni/dashboard', label: 'Ringkasan' },

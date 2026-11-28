@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import {api} from '../../lib/api';
+import { api } from '../../lib/api';
+import { isAuthenticated } from '../../services/auth';
+import { useNavigate } from 'react-router-dom';
+import { LoadingState, ErrorState, EmptyState } from '../../components/states';
 
 export default function TenantComplaintsPage() {
+  const navigate = useNavigate();
   const [complaints, setComplaints] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -15,54 +19,30 @@ export default function TenantComplaintsPage() {
   });
   const [commentText, setCommentText] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     api
       .get('/tenant/complaints')
       .then((res) => {
         setComplaints(res.data?.complaints || []);
         setFacilities(res.data?.facilities || []);
       })
-      .catch(() => {
-        setFacilities([
-          { id: 1, name: 'Kasur', scope: 'room' },
-          { id: 2, name: 'Lemari', scope: 'room' },
-          { id: 6, name: 'Kipas angin', scope: 'room' },
-          { id: 7, name: 'Kamar mandi dalam', scope: 'room' },
-          { id: 8, name: 'Dapur', scope: 'shared' },
-          { id: 9, name: 'WiFi', scope: 'shared' },
-        ]);
-        setComplaints([
-          {
-            id: 2,
-            category: 'damage',
-            urgency: 'normal',
-            facility_name: 'Kipas angin',
-            title: 'Kipas angin bunyi keras',
-            description: 'Kipas berbunyi keras di kecepatan 2 dan 3.',
-            status: 'resolved',
-            action_taken: 'Pasang ulang dudukan dengan baut fischer.',
-            created_at: '2026-11-03 13:00',
-            comments: [
-              { id: 2, author: 'Budi Santoso', role: 'tenant', body: 'Bunyinya makin keras kalau malam.' },
-              { id: 3, author: 'Pemilik KostKuy', role: 'owner', body: 'Sudah dipasang ulang dudukannya, silakan dicek.' },
-            ],
-          },
-          {
-            id: 1,
-            category: 'damage',
-            urgency: 'normal',
-            facility_name: 'Kipas angin',
-            title: 'Kipas angin tidak berputar',
-            description: 'Kipas angin menyala tapi baling-balingnya tidak berputar.',
-            status: 'confirmed',
-            action_taken: 'Ganti kapasitor kipas.',
-            created_at: '2026-07-12 14:15',
-            comments: [],
-          },
-        ]);
-      });
-  }, []);
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        setError(err?.response?.data?.message || 'Gagal memuat daftar keluhan.');
+      })
+      .finally(() => setLoading(false));
+  }, [navigate]);
 
   const handleCreateComplaint = async (e) => {
     e.preventDefault();
@@ -77,17 +57,15 @@ export default function TenantComplaintsPage() {
       Array.from(form.photos)
         .slice(0, 3)
         .forEach((file) => fd.append('photos[]', file));
-
       const res = await api.post('/tenant/complaints', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
       if (res.data?.complaint) {
         setComplaints((prev) => [res.data.complaint, ...prev]);
       }
       setShowForm(false);
       setForm({ category: 'damage', facility_id: '', urgency: 'normal', title: '', description: '', photos: [] });
-    } catch (_) {
+    } catch {
       alert('Pastikan minimal 1 foto (maks. 3 foto, 5 MB/foto) telah dilampirkan.');
     } finally {
       setSubmitting(false);
@@ -98,7 +76,7 @@ export default function TenantComplaintsPage() {
     const nextStatus = isResolved ? 'confirmed' : 'in_progress';
     try {
       await api.patch(`/tenant/complaints/${complaintId}/confirm`, { resolved: isResolved });
-    } catch (_) {
+    } catch {
       // optimistic fallback
     }
     setComplaints((prev) =>
@@ -111,7 +89,7 @@ export default function TenantComplaintsPage() {
     if (!body) return;
     try {
       await api.post(`/tenant/complaints/${complaintId}/comments`, { body });
-    } catch (_) {
+    } catch {
       // optimistic fallback
     }
     setComplaints((prev) =>
@@ -138,6 +116,14 @@ export default function TenantComplaintsPage() {
     confirmed: { text: 'Dikonfirmasi Beres', cls: 'bg-[#E5F1EA] text-[#14532D]' },
   };
 
+  if (loading) {
+    return <LoadingState message="Memuat daftar keluhan..." />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+  }
+
   return (
     <>
       {/* Header */}
@@ -154,7 +140,6 @@ export default function TenantComplaintsPage() {
             Laporkan kerusakan atau kendala fasilitas kamar & area bersama dengan bukti foto.
           </p>
         </div>
-
         <button
           type="button"
           onClick={() => setShowForm(!showForm)}
@@ -173,7 +158,6 @@ export default function TenantComplaintsPage() {
           <h2 className="font-['Fraunces',Georgia,serif] text-xl font-bold text-[#112A1C]">
             Formulir Tiket Keluhan
           </h2>
-
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-bold text-[#112A1C] mb-1.5">Kategori</label>
@@ -189,7 +173,6 @@ export default function TenantComplaintsPage() {
                 <option value="other">Lainnya</option>
               </select>
             </div>
-
             <div>
               <label className="block text-xs font-bold text-[#112A1C] mb-1.5">
                 Fasilitas Terkait (Opsional untuk Lainnya)
@@ -207,7 +190,6 @@ export default function TenantComplaintsPage() {
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-xs font-bold text-[#112A1C] mb-1.5">Tingkat Urgensi</label>
               <select
@@ -220,7 +202,6 @@ export default function TenantComplaintsPage() {
               </select>
             </div>
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1.5">Judul Keluhan</label>
             <input
@@ -233,7 +214,6 @@ export default function TenantComplaintsPage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1.5">Deskripsi Detail</label>
             <textarea
@@ -245,7 +225,6 @@ export default function TenantComplaintsPage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3.5 py-2.5 text-sm"
             />
           </div>
-
           <div>
             <label className="block text-xs font-bold text-[#112A1C] mb-1.5">
               Unggah Foto Bukti (Wajib min. 1, maks. 3 foto · @ maks. 5 MB)
@@ -259,7 +238,6 @@ export default function TenantComplaintsPage() {
               className="w-full rounded-xl border border-[#E5E1D8] bg-[#F8F6F1] px-3 py-2 text-xs"
             />
           </div>
-
           <button
             type="submit"
             disabled={submitting}
@@ -271,111 +249,108 @@ export default function TenantComplaintsPage() {
       )}
 
       {/* Daftar Riwayat Keluhan */}
-      <div className="space-y-4">
-        {complaints.map((c) => {
-          const st = statusLabel[c.status] || statusLabel.submitted;
-          return (
-            <div
-              key={c.id}
-              className="rounded-[22px] bg-white border border-[#E5E1D8] p-5 sm:p-6 shadow-sm space-y-4"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {c.urgency === 'emergency' && (
-                    <span className="rounded-full bg-[#DC2626] text-white px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
-                      Darurat
+      {complaints.length === 0 ? (
+        <EmptyState message="Belum ada keluhan. Klik tombol di atas untuk membuat keluhan baru." />
+      ) : (
+        <div className="space-y-4">
+          {complaints.map((c) => {
+            const st = statusLabel[c.status] || statusLabel.submitted;
+            return (
+              <div
+                key={c.id}
+                className="rounded-[22px] bg-white border border-[#E5E1D8] p-5 sm:p-6 shadow-sm space-y-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {c.urgency === 'emergency' && (
+                      <span className="rounded-full bg-[#DC2626] text-white px-2.5 py-0.5 text-[10px] font-extrabold uppercase">
+                        Darurat
+                      </span>
+                    )}
+                    <span className={`rounded-full px-3 py-0.5 text-[11px] font-bold ${st.cls}`}>
+                      {st.text}
                     </span>
-                  )}
-                  <span className={`rounded-full px-3 py-0.5 text-[11px] font-bold ${st.cls}`}>
-                    {st.text}
-                  </span>
-                  {c.facility_name && (
-                    <span className="rounded-full bg-[#F1EDE3] px-2.5 py-0.5 text-[11px] font-semibold text-[#4B5850]">
-                      {c.facility_name}
+                    {c.facility_name && (
+                      <span className="rounded-full bg-[#F1EDE3] px-2.5 py-0.5 text-[11px] font-semibold text-[#4B5850]">
+                        {c.facility_name}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-[#7A867E]">{c.created_at}</span>
+                </div>
+                <div>
+                  <h3 className="font-['Fraunces',Georgia,serif] text-lg font-bold text-[#112A1C]">
+                    {c.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#4B5850] mt-1">{c.description}</p>
+                </div>
+                {c.action_taken && (
+                  <div className="rounded-xl bg-[#E5F1EA]/70 border border-[#1B6B3A]/20 p-3.5 text-xs text-[#112A1C]">
+                    <strong>Tindakan Perbaikan Pemilik:</strong> {c.action_taken}
+                  </div>
+                )}
+                {c.status === 'resolved' && (
+                  <div className="rounded-2xl bg-[#FEF3C7] border border-[#F59E0B]/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-[#92400E]">
+                      Pemilik menandai keluhan ini Selesai. Apakah masalah sudah beres?
                     </span>
-                  )}
-                </div>
-                <span className="text-[11px] text-[#7A867E]">{c.created_at}</span>
-              </div>
-
-              <div>
-                <h3 className="font-['Fraunces',Georgia,serif] text-lg font-bold text-[#112A1C]">
-                  {c.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#4B5850] mt-1">{c.description}</p>
-              </div>
-
-              {c.action_taken && (
-                <div className="rounded-xl bg-[#E5F1EA]/70 border border-[#1B6B3A]/20 p-3.5 text-xs text-[#112A1C]">
-                  <strong>Tindakan Perbaikan Pemilik:</strong> {c.action_taken}
-                </div>
-              )}
-
-              {/* Konfirmasi Penyelesaian oleh Penyewa */}
-              {c.status === 'resolved' && (
-                <div className="rounded-2xl bg-[#FEF3C7] border border-[#F59E0B]/30 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-[#92400E]">
-                    Pemilik menandai keluhan ini Selesai. Apakah masalah sudah beres?
-                  </span>
-                  <div className="flex gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmResolution(c.id, true)}
+                        className="rounded-full bg-[#14532D] text-white text-xs font-bold px-4 py-2 cursor-pointer"
+                      >
+                        ✓ Masalah Sudah Beres
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmResolution(c.id, false)}
+                        className="rounded-full bg-white border border-[#D97706] text-[#B45309] text-xs font-bold px-4 py-2 cursor-pointer"
+                      >
+                        Belum Beres
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="pt-3 border-t border-[#E5E1D8] space-y-2.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#7A867E]">
+                    Diskusi & Tindak Lanjut
+                  </div>
+                  {(c.comments || []).map((cm) => (
+                    <div
+                      key={cm.id}
+                      className={`rounded-xl px-3.5 py-2.5 text-xs ${
+                        cm.role === 'owner'
+                          ? 'bg-[#E5F1EA] text-[#112A1C]'
+                          : 'bg-[#F8F6F1] text-[#112A1C]'
+                      }`}
+                    >
+                      <span className="font-bold">{cm.author}: </span>
+                      <span>{cm.body}</span>
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="text"
+                      value={commentText[c.id] || ''}
+                      onChange={(e) => setCommentText({ ...commentText, [c.id]: e.target.value })}
+                      placeholder="Tulis balasan atau update untuk pemilik..."
+                      className="flex-1 rounded-full border border-[#E5E1D8] bg-[#F8F6F1] px-4 py-2 text-xs outline-none focus:border-[#1B6B3A] focus:bg-white"
+                    />
                     <button
                       type="button"
-                      onClick={() => handleConfirmResolution(c.id, true)}
+                      onClick={() => handleSendComment(c.id)}
                       className="rounded-full bg-[#14532D] text-white text-xs font-bold px-4 py-2 cursor-pointer"
                     >
-                      ✓ Masalah Sudah Beres
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleConfirmResolution(c.id, false)}
-                      className="rounded-full bg-white border border-[#D97706] text-[#B45309] text-xs font-bold px-4 py-2 cursor-pointer"
-                    >
-                      Belum Beres
+                      Kirim
                     </button>
                   </div>
-                </div>
-              )}
-
-              {/* Komentar Dua Arah */}
-              <div className="pt-3 border-t border-[#E5E1D8] space-y-2.5">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-[#7A867E]">
-                  Diskusi & Tindak Lanjut
-                </div>
-                {(c.comments || []).map((cm) => (
-                  <div
-                    key={cm.id}
-                    className={`rounded-xl px-3.5 py-2.5 text-xs ${
-                      cm.role === 'owner'
-                        ? 'bg-[#E5F1EA] text-[#112A1C]'
-                        : 'bg-[#F8F6F1] text-[#112A1C]'
-                    }`}
-                  >
-                    <span className="font-bold">{cm.author}: </span>
-                    <span>{cm.body}</span>
-                  </div>
-                ))}
-
-                <div className="flex gap-2 pt-1">
-                  <input
-                    type="text"
-                    value={commentText[c.id] || ''}
-                    onChange={(e) => setCommentText({ ...commentText, [c.id]: e.target.value })}
-                    placeholder="Tulis balasan atau update untuk pemilik..."
-                    className="flex-1 rounded-full border border-[#E5E1D8] bg-[#F8F6F1] px-4 py-2 text-xs outline-none focus:border-[#1B6B3A] focus:bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleSendComment(c.id)}
-                    className="rounded-full bg-[#14532D] text-white text-xs font-bold px-4 py-2 cursor-pointer"
-                  >
-                    Kirim
-                  </button>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

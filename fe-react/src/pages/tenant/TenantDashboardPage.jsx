@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import {api} from '../../lib/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../../lib/api';
+import { isAuthenticated } from '../../services/auth';
+import { LoadingState, ErrorState } from '../../components/states';
 
 export default function TenantDashboardPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
   const [nextPeriod, setNextPeriod] = useState(6);
   const [savingPeriod, setSavingPeriod] = useState(false);
   const [periodFeedback, setPeriodFeedback] = useState('');
 
   useEffect(() => {
+    // Guard: redirect ke login jika belum authenticated
+    if (!isAuthenticated()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     api
       .get('/tenant/dashboard')
       .then((res) => {
@@ -17,37 +27,14 @@ export default function TenantDashboardPage() {
           setNextPeriod(res.data.occupancy.next_period_months);
         }
       })
-      .catch(() => {
-        setData({
-          user: { id: 2, name: 'Budi Santoso', phone: '081311110001' },
-          occupancy: {
-            id: 1,
-            start_date: '2026-05-10',
-            next_period_months: 6,
-            deposit_amount: 500000,
-            deposit_status: 'received',
-            active_until: '2027-05-09',
-            room: { number: '101', floor: 1, type_name: 'Non-AC' },
-          },
-          prices: [
-            { period_months: 1, price: 1000000 },
-            { period_months: 6, price: 5700000 },
-            { period_months: 12, price: 11000000 },
-          ],
-          active_invoice: {
-            id: 2,
-            number: 'INV-202611-0002',
-            period_start: '2026-11-10',
-            period_end: '2027-05-09',
-            period_months: 6,
-            amount: 5700000,
-            due_date: '2026-11-10',
-            status: 'unpaid',
-          },
-          open_complaints_count: 1,
-        });
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        setError(err?.response?.data?.message || 'Gagal memuat dashboard.');
       });
-  }, []);
+  }, [navigate]);
 
   const handleSaveNextPeriod = async () => {
     setSavingPeriod(true);
@@ -57,8 +44,7 @@ export default function TenantDashboardPage() {
       setPeriodFeedback('Pilihan periode bayar berikutnya berhasil disimpan.');
     } catch (err) {
       setPeriodFeedback(
-        err?.response?.data?.message ||
-          'Pilihan periode tersimpan (terkunci otomatis H-14 saat tagihan terbit).'
+        err?.response?.data?.message || 'Gagal menyimpan pilihan periode.'
       );
     } finally {
       setSavingPeriod(false);
@@ -72,12 +58,14 @@ export default function TenantDashboardPage() {
       maximumFractionDigits: 0,
     }).format(n || 0);
 
-  if (!data) {
-    return (
-      <div className="py-20 text-center text-sm font-semibold text-[#4B5850]">
-        Memuat ringkasan penghuni...
-      </div>
-    );
+  // Loading state
+  if (!data && !error) {
+    return <LoadingState message="Memuat ringkasan penghuni..." />;
+  }
+
+  // Error state
+  if (error) {
+    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   }
 
   return (
@@ -103,16 +91,13 @@ export default function TenantDashboardPage() {
             <p className="text-xs sm:text-sm text-white/80 mt-1">
               Masa sewa aktif s/d{' '}
               <strong className="text-white font-['JetBrains_Mono',monospace]">
-                {data.occupancy?.active_until || '09 Mei 2027'}
+                {data.occupancy?.active_until || '-'}
               </strong>{' '}
               · Deposit {formatRp(data.occupancy?.deposit_amount)} (
-              {data.occupancy?.deposit_status === 'received'
-                ? 'Diterima'
-                : data.occupancy?.deposit_status}
+              {data.occupancy?.deposit_status === 'received' ? 'Diterima' : data.occupancy?.deposit_status}
               )
             </p>
           </div>
-
           <div className="flex flex-wrap gap-2.5">
             <Link
               to="/penghuni/tagihan"
@@ -163,7 +148,6 @@ export default function TenantDashboardPage() {
               </span>
             )}
           </div>
-
           {data.active_invoice ? (
             <div className="rounded-2xl bg-[#F8F6F1] border border-[#E5E1D8] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
@@ -193,18 +177,14 @@ export default function TenantDashboardPage() {
               Semua tagihan Anda sudah lunas. Kuitansi PDF tersedia di menu Tagihan.
             </div>
           )}
-
           {/* Pilihan Periode Bayar Berikutnya */}
           <div className="mt-6 pt-5 border-t border-[#E5E1D8]">
             <div className="mb-3">
-              <h3 className="text-sm font-bold text-[#112A1C]">
-                Pilihan Periode Bayar Berikutnya
-              </h3>
+              <h3 className="text-sm font-bold text-[#112A1C]">Pilihan Periode Bayar Berikutnya</h3>
               <p className="text-xs text-[#4B5850]">
                 Pilih skema 1, 6, atau 12 bulan maksimal H-15 sebelum periode berjalan berakhir.
               </p>
             </div>
-
             <div className="grid grid-cols-3 gap-2.5">
               {(data.prices || []).map((p) => (
                 <button
@@ -224,7 +204,6 @@ export default function TenantDashboardPage() {
                 </button>
               ))}
             </div>
-
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] text-[#7A867E]">
                 *Otomatis terkunci pada H-14 saat tagihan baru diterbitkan sistem.
@@ -243,7 +222,6 @@ export default function TenantDashboardPage() {
             )}
           </div>
         </div>
-
         {/* Status Keluhan & Pintasan */}
         <div className="rounded-[22px] bg-white border border-[#E5E1D8] p-6 shadow-sm flex flex-col justify-between space-y-5">
           <div>
@@ -256,18 +234,13 @@ export default function TenantDashboardPage() {
             <p className="text-xs text-[#4B5850] mt-1">
               Laporkan kerusakan atau fasilitas tidak sesuai disertai foto bukti.
             </p>
-
             <div className="mt-4 rounded-2xl bg-[#F8F6F1] border border-[#E5E1D8] p-4">
               <div className="text-xs text-[#4B5850]">Menunggu Konfirmasi / Diproses</div>
               <div className="font-['JetBrains_Mono',monospace] text-3xl font-bold text-[#112A1C] mt-1">
-                {data.open_complaints_count ?? 1} Tiket
+                {data.open_complaints_count ?? 0} Tiket
               </div>
-              <p className="text-[11px] text-[#B45309] font-semibold mt-1">
-                Ada keluhan berstatus Selesai menunggu konfirmasi Anda.
-              </p>
             </div>
           </div>
-
           <div className="space-y-2.5">
             <Link
               to="/penghuni/keluhan"
