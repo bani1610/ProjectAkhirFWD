@@ -50,15 +50,10 @@ export default function LoginPage() {
       } else if (code === 'ACCOUNT_INACTIVE') {
         setErrorMsg('Akun Anda sudah dinonaktifkan. Hubungi pemilik kost.');
       } else {
-        const remaining = meta.remaining_attempts;
         const baseMsg =
           payload?.message ||
           'Nomor HP atau kata sandi tidak sesuai. Silakan periksa kembali.';
-        setErrorMsg(
-          remaining !== undefined
-            ? `${baseMsg} (Percobaan tersisa: ${remaining})`
-            : baseMsg
-        );
+        setErrorMsg(baseMsg);
       }
     } finally {
       setLoading(false);

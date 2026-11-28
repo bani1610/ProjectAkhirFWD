@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 // Endpoint login (publik).
 Route::post('/auth/login', [AuthController::class, 'login'])
+    ->middleware('throttle:5,1')
     ->name('auth.login');
 
 // Endpoint logout (harus login).
